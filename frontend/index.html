@@ -14,7 +14,9 @@
   <script>
     const { createFFmpeg, fetchFile } = FFmpeg;
     const ffmpeg = createFFmpeg({ log: true });
-    const WORKER_URL = 'https://your-worker.workers.dev'; // 替换为你的 Worker 地址
+
+    // API 地址使用相对路径，自动适配当前域名（Worker 域名）
+    const API_BASE = '';  // 空字符串表示同域
 
     document.getElementById('uploadBtn').onclick = async () => {
       const file = document.getElementById('fileInput').files[0];
@@ -52,7 +54,7 @@
       // 为每个文件申请预签名 URL 并并发上传
       const uploads = files.map(async (filename) => {
         const key = `videos/${Date.now()}/${filename}`;
-        const resp = await fetch(`${WORKER_URL}/api/presign`, {
+        const resp = await fetch(`${API_BASE}/api/presign`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key })
@@ -70,10 +72,10 @@
       await Promise.all(uploads);
       progress.textContent = '✅ 全部上传完成！';
 
-      // 播放
+      // 播放（使用 Worker 的播放接口）
       const video = document.getElementById('player');
       const m3u8Key = `videos/${Date.now()}/playlist.m3u8`;
-      video.src = `${WORKER_URL}/api/playlist/${m3u8Key}`;
+      video.src = `${API_BASE}/api/playlist/${m3u8Key}`;
       video.style.display = 'block';
       video.play();
     };
