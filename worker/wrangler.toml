@@ -1,4 +1,4 @@
-name = "video-slicer-uploader"
+name = "2m3u8"
 main = "src/index.ts"
 compatibility_date = "2026-07-19"
 
