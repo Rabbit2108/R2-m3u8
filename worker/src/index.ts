@@ -9,7 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 app.use('/*', cors());
 
-// 根路径直接返回 HTML 页面（嵌入完整的上传界面）
+// 根路径直接返回完整的 HTML 页面
 app.get('/', (c) => {
   const html = `<!DOCTYPE html>
 <html>
@@ -27,7 +27,7 @@ app.get('/', (c) => {
   <script>
     const { createFFmpeg, fetchFile } = FFmpeg;
     const ffmpeg = createFFmpeg({ log: true });
-    const API_BASE = '';  // 同域，使用相对路径
+    const API_BASE = '';
 
     document.getElementById('uploadBtn').onclick = async () => {
       const file = document.getElementById('fileInput').files[0];
@@ -88,7 +88,6 @@ app.get('/', (c) => {
   </script>
 </body>
 </html>`;
-
   return c.html(html);
 });
 
