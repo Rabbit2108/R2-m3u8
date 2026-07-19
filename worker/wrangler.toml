@@ -2,11 +2,9 @@ name = "2m3u8"
 main = "src/index.ts"
 compatibility_date = "2026-07-19"
 
-# R2 存储桶绑定
 [[r2_buckets]]
 binding = "MY_BUCKET"
-bucket_name = "your-bucket-name"   # 替换为你的 R2 桶名称
+bucket_name = "v1td"   # 👈 改成你的桶名
 
-# 静态资源托管（自动托管 ./frontend 目录下的所有文件）
 [assets]
 directory = "./frontend"
