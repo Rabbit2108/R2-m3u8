@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>视频切片上传</title>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
+</head>
+<body>
+  <input type="file" id="fileInput" accept="video/*">
+  <button id="uploadBtn">上传并切片</button>
+  <div id="progress"></div>
+  <video id="player" controls style="width:100%;max-width:800px;display:none;"></video>
+
+  <script>
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
+    const WORKER_URL = 'https://your-worker.workers.dev'; // 替换为你的 Worker 地址
+
+    document.getElementById('uploadBtn').onclick = async () => {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert('请选择视频文件');
+
+      const progress = document.getElementById('progress');
+      progress.textContent = '加载 FFmpeg...';
+
+      if (!ffmpeg.isLoaded()) await ffmpeg.load();
+      ffmpeg.setProgress(({ ratio }) => {
+        progress.textContent = `切片中: ${Math.round(ratio * 100)}%`;
+      });
+
+      progress.textContent = '写入文件到虚拟文件系统...';
+      ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
+
+      progress.textContent = '切片中 (生成 HLS)...';
+      ffmpeg.run(
+        '-i', 'input.mp4',
+        '-codec', 'copy',
+        '-f', 'hls',
+        '-hls_time', '10',
+        '-hls_list_size', '0',
+        '-hls_segment_filename', 'segment_%03d.ts',
+        'playlist.m3u8'
+      );
+
+      progress.textContent = '切片完成，开始上传...';
+
+      // 读取生成的文件列表
+      const files = ffmpeg.FS('readdir', '/').filter(f => 
+        f.endsWith('.ts') || f === 'playlist.m3u8'
+      );
+
+      // 为每个文件申请预签名 URL 并并发上传
+      const uploads = files.map(async (filename) => {
+        const key = `videos/${Date.now()}/${filename}`;
+        const resp = await fetch(`${WORKER_URL}/api/presign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key })
+        });
+        const { url } = await resp.json();
+
+        const data = ffmpeg.FS('readFile', filename);
+        return fetch(url, {
+          method: 'PUT',
+          body: data.buffer,
+          headers: { 'Content-Type': filename.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp2t' }
+        });
+      });
+
+      await Promise.all(uploads);
+      progress.textContent = '✅ 全部上传完成！';
+
+      // 播放
+      const video = document.getElementById('player');
+      const m3u8Key = `videos/${Date.now()}/playlist.m3u8`;
+      video.src = `${WORKER_URL}/api/playlist/${m3u8Key}`;
+      video.style.display = 'block';
+      video.play();
+    };
+  </script>
+</body>
+</html>
